@@ -1,14 +1,15 @@
-import { type NextRequest, NextResponse } from "next/server"
-import { streamText } from "ai"
-import { groq } from "@ai-sdk/groq"
+import { type NextRequest, NextResponse } from "next/server";
+import Groq from "groq-sdk";
 
 export async function POST(req: NextRequest) {
   try {
-    const { resumeData, jobDescription } = await req.json()
+    const { resumeData, jobDescription } = await req.json();
     
     if (!resumeData || !jobDescription) {
-      return NextResponse.json({ error: "Resume data and job description are required" }, { status: 400 })
+      return NextResponse.json({ error: "Resume data and job description are required" }, { status: 400 });
     }
+    
+    const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
     
     const prompt = `
       I have a resume and a job description. I need you to analyze them and provide suggestions to optimize my resume for this specific job.
@@ -30,19 +31,25 @@ export async function POST(req: NextRequest) {
         "keySkills": ["skill1", "skill2", ...],
         "gaps": ["gap1", "gap2", ...]
       }
-    `
+    `;
     
-    const { text } = await streamText({
-      model: groq("llama-3.3-70b-versatile"),
-      prompt,
-    })
+    const response = await groq.chat.completions.create({
+      messages: [
+        {
+          role: "user",
+          content: prompt,
+        }
+      ],
+      model: "llama-3.3-70b-versatile",
+      response_format: { type: "json_object" }
+    });
     
     // Parse the response as JSON
-    const analysis = JSON.parse(await text)
+    const analysis = JSON.parse(response.choices[0]?.message?.content || "{}");
     
-    return NextResponse.json(analysis)
+    return NextResponse.json(analysis);
   } catch (error) {
-    console.error("Error analyzing job description:", error)
-    return NextResponse.json({ error: "Failed to analyze job description" }, { status: 500 })
+    console.error("Error analyzing job description:", error);
+    return NextResponse.json({ error: "Failed to analyze job description" }, { status: 500 });
   }
 }
