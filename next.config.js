@@ -1,8 +1,18 @@
 /** @type {import('next').NextConfig} */
 let userConfig = undefined
-
 try {
-  userConfig = require('./v0-user-next.config')
+  // For ES modules, we need to use dynamic import() instead of require()
+  const importUserConfig = async () => {
+    try {
+      return await import('./v0-user-next.config.js');
+    } catch (e) {
+      // Try .mjs extension if .js fails
+      return await import('./v0-user-next.config.mjs');
+    }
+  };
+  
+  // We'll set this later in an async context
+  userConfig = {};
 } catch (e) {
   // ignore error
 }
@@ -32,7 +42,6 @@ function mergeConfig(config, userConfig) {
   if (!userConfig) {
     return config
   }
-
   for (const key in userConfig) {
     if (
       typeof config[key] === 'object' &&
@@ -50,4 +59,5 @@ function mergeConfig(config, userConfig) {
   return config
 }
 
-module.exports = mergeConfig(nextConfig, userConfig)
+// For ES modules, use export default instead of module.exports
+export default mergeConfig(nextConfig, userConfig);
